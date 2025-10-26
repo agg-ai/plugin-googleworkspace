@@ -7,6 +7,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
@@ -32,11 +33,13 @@ public abstract class AbstractTask extends Task implements GcpInterface {
     protected static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
 
     protected Property<String> serviceAccount;
+    protected Property<String> accessToken;
 
     @Builder.Default
     protected Property<Integer> readTimeout = Property.ofValue(120);
 
-    protected HttpCredentialsAdapter credentials(RunContext runContext) throws IllegalVariableEvaluationException, IOException {
+    protected HttpCredentialsAdapter credentials(RunContext runContext)
+            throws IllegalVariableEvaluationException, IOException {
         GoogleCredentials credentials;
 
         if (serviceAccount != null) {
@@ -47,11 +50,16 @@ public abstract class AbstractTask extends Task implements GcpInterface {
 
             if (logger.isTraceEnabled()) {
                 byteArrayInputStream.reset();
-                Map<String, String> jsonKey = JacksonMapper.ofJson().readValue(byteArrayInputStream, new TypeReference<>() {});
+                Map<String, String> jsonKey = JacksonMapper.ofJson().readValue(byteArrayInputStream,
+                        new TypeReference<>() {
+                        });
                 if (jsonKey.containsKey("client_email")) {
                     logger.trace(" • Using service account: {}", jsonKey.get("client_email"));
                 }
             }
+        } else if (accessToken != null) {
+            String renderedAccessToken = runContext.render(this.accessToken).as(String.class).orElseThrow();
+            credentials = GoogleCredentials.create(new AccessToken(renderedAccessToken, null));
         } else {
             credentials = GoogleCredentials.getApplicationDefault();
         }
