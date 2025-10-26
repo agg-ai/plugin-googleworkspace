@@ -31,16 +31,9 @@ import java.util.Properties;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Schema(
-    title = "Send an email via Gmail",
-    description = "Send an email message using Gmail API with support for text/HTML content and attachments"
-)
-@Plugin(
-    examples = {
-        @Example(
-            title = "Send a simple text email",
-            full = true,
-            code = """
+@Schema(title = "Send an email via Gmail", description = "Send an email message using Gmail API with support for text/HTML content and attachments")
+@Plugin(examples = {
+        @Example(title = "Send a simple text email", full = true, code = """
                 id: send_simple_email
                 namespace: company.team
 
@@ -54,12 +47,8 @@ import java.util.Properties;
                       - recipient@example.com
                     subject: Test Email
                     textBody: This is a test email from Kestra
-                """
-        ),
-        @Example(
-            title = "Send an HTML email with CC and attachments",
-            full = true,
-            code = """
+                """),
+        @Example(title = "Send an HTML email with CC and attachments", full = true, code = """
                 id: send_rich_email
                 namespace: company.team
 
@@ -79,58 +68,32 @@ import java.util.Properties;
                     attachments:
                       - /path/to/file.pdf
                       - /path/to/image.png
-                """
-        )
-    }
-)
+                """)
+})
 public class Send extends AbstractMail implements RunnableTask<Send.Output> {
-    @Schema(
-        title = "Recipient email addresses (To field)",
-        description = "List of primary recipient email addresses"
-    )
+    @Schema(title = "Recipient email addresses (To field)", description = "List of primary recipient email addresses")
     @NotNull
     private Property<List<String>> to;
 
-    @Schema(
-        title = "CC recipient email addresses",
-        description = "List of CC recipient email addresses"
-    )
+    @Schema(title = "CC recipient email addresses", description = "List of CC recipient email addresses")
     private Property<List<String>> cc;
 
-    @Schema(
-        title = "BCC recipient email addresses",
-        description = "List of BCC recipient email addresses"
-    )
+    @Schema(title = "BCC recipient email addresses", description = "List of BCC recipient email addresses")
     private Property<List<String>> bcc;
 
-    @Schema(
-        title = "Email subject",
-        description = "Subject line for the email"
-    )
+    @Schema(title = "Email subject", description = "Subject line for the email")
     private Property<String> subject;
 
-    @Schema(
-        title = "Plain text body",
-        description = "Plain text content of the email"
-    )
+    @Schema(title = "Plain text body", description = "Plain text content of the email")
     private Property<String> textBody;
 
-    @Schema(
-        title = "HTML body",
-        description = "HTML content of the email"
-    )
+    @Schema(title = "HTML body", description = "HTML content of the email")
     private Property<String> htmlBody;
 
-    @Schema(
-        title = "From email address",
-        description = "Sender email address (defaults to authenticated user)"
-    )
+    @Schema(title = "From email address", description = "Sender email address (defaults to authenticated user)")
     private Property<String> from;
 
-    @Schema(
-        title = "File attachments",
-        description = "List of file URIs to attach to the email"
-    )
+    @Schema(title = "File attachments", description = "List of file URIs to attach to the email")
     private Property<List<String>> attachments;
 
     @Override
@@ -147,9 +110,9 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         runContext.logger().info("Email sent successfully with message ID: {}", message.getId());
 
         return Output.builder()
-            .messageId(message.getId())
-            .threadId(message.getThreadId())
-            .build();
+                .messageId(message.getId())
+                .threadId(message.getThreadId())
+                .build();
     }
 
     private MimeMessage createEmail(RunContext runContext) throws Exception {
@@ -162,14 +125,14 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         if (rToAddresses != null && !rToAddresses.isEmpty()) {
             runContext.logger().debug("Setting TO recipients: {}", rToAddresses.size());
             InternetAddress[] toArray = rToAddresses.stream()
-                .map(addr -> {
-                    try {
-                        return new InternetAddress(addr);
-                    } catch (AddressException e) {
-                        throw new RuntimeException("Invalid email address: " + addr, e);
-                    }
-                })
-                .toArray(InternetAddress[]::new);
+                    .map(addr -> {
+                        try {
+                            return new InternetAddress(addr);
+                        } catch (AddressException e) {
+                            throw new RuntimeException("Invalid email address: " + addr, e);
+                        }
+                    })
+                    .toArray(InternetAddress[]::new);
             email.setRecipients(javax.mail.Message.RecipientType.TO, toArray);
         }
 
@@ -178,14 +141,14 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         if (rCcAddresses != null && !rCcAddresses.isEmpty()) {
             runContext.logger().debug("Setting CC recipients: {}", rCcAddresses.size());
             InternetAddress[] ccArray = rCcAddresses.stream()
-                .map(addr -> {
-                    try {
-                        return new InternetAddress(addr);
-                    } catch (AddressException e) {
-                        throw new RuntimeException("Invalid CC email address: " + addr, e);
-                    }
-                })
-                .toArray(InternetAddress[]::new);
+                    .map(addr -> {
+                        try {
+                            return new InternetAddress(addr);
+                        } catch (AddressException e) {
+                            throw new RuntimeException("Invalid CC email address: " + addr, e);
+                        }
+                    })
+                    .toArray(InternetAddress[]::new);
             email.setRecipients(javax.mail.Message.RecipientType.CC, ccArray);
         }
 
@@ -194,14 +157,14 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         if (rBccAddresses != null && !rBccAddresses.isEmpty()) {
             runContext.logger().debug("Setting BCC recipients: {}", rBccAddresses.size());
             InternetAddress[] bccArray = rBccAddresses.stream()
-                .map(addr -> {
-                    try {
-                        return new InternetAddress(addr);
-                    } catch (AddressException e) {
-                        throw new RuntimeException("Invalid BCC email address: " + addr, e);
-                    }
-                })
-                .toArray(InternetAddress[]::new);
+                    .map(addr -> {
+                        try {
+                            return new InternetAddress(addr);
+                        } catch (AddressException e) {
+                            throw new RuntimeException("Invalid BCC email address: " + addr, e);
+                        }
+                    })
+                    .toArray(InternetAddress[]::new);
             email.setRecipients(javax.mail.Message.RecipientType.BCC, bccArray);
         }
 
@@ -218,8 +181,10 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
 
         // Set subject
         var rSubject = runContext.render(this.subject).as(String.class).orElse("");
-        email.setSubject(rSubject);
-        runContext.logger().debug("Set email subject: {}", rSubject);
+        if (!rSubject.isEmpty()) {
+            email.setSubject(rSubject);
+            runContext.logger().debug("Set email subject: {}", rSubject);
+        }
 
         // Handle content and attachments
         var rAttachmentList = runContext.render(this.attachments).asList(String.class);
@@ -256,23 +221,23 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         var rTextContent = runContext.render(this.textBody).as(String.class).orElse(null);
         var rHtmlContent = runContext.render(this.htmlBody).as(String.class).orElse(null);
 
-        if (rHtmlContent != null && rTextContent != null) {
+        if (rHtmlContent != null && !rHtmlContent.isEmpty() && rTextContent != null && !rTextContent.isEmpty()) {
             // Both text and HTML - create multipart alternative
             Multipart multipart = new MimeMultipart("alternative");
-            
+
             MimeBodyPart textPart = new MimeBodyPart();
             textPart.setText(rTextContent, "utf-8");
             multipart.addBodyPart(textPart);
-            
+
             MimeBodyPart htmlPart = new MimeBodyPart();
             htmlPart.setContent(rHtmlContent, "text/html; charset=utf-8");
             multipart.addBodyPart(htmlPart);
-            
+
             part.setContent(multipart);
-        } else if (rHtmlContent != null) {
+        } else if (rHtmlContent != null && !rHtmlContent.isEmpty()) {
             // HTML only
             part.setContent(rHtmlContent, "text/html; charset=utf-8");
-        } else if (rTextContent != null) {
+        } else if (rTextContent != null && !rTextContent.isEmpty()) {
             // Text only
             part.setText(rTextContent, "utf-8");
         } else {
@@ -291,7 +256,6 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         message.setRaw(encodedEmail);
         return message;
     }
-
 
     @Builder
     @Getter
