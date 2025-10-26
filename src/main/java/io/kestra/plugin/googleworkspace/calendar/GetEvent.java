@@ -22,40 +22,30 @@ import java.util.Map;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Plugin(
-    examples = @Example(
-        full = true,
-        code = """
-            id: googleworkspace_calendar_get_event
-            namespace: company.team
+@Plugin(examples = @Example(full = true, code = """
+        id: googleworkspace_calendar_get_event
+        namespace: company.team
 
-            tasks:
-              - id: get_event
-                type: io.kestra.plugin.googleworkspace.calendar.GetEvent
-                serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT_JSON') }}"
-                calendarId: primary
-                eventId: "abcdef123456"
-                maxAttendees: 50
-                alwaysIncludeEmail: true
-            """
-    )
-)
+        tasks:
+          - id: get_event
+            type: io.kestra.plugin.googleworkspace.calendar.GetEvent
+            serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT_JSON') }}"
+            calendarId: primary
+            eventId: "abcdef123456"
+            maxAttendees: 50
+        """))
 @Schema(title = "Fetch a Google Calendar event by ID.")
 public class GetEvent extends AbstractCalendar implements RunnableTask<GetEvent.Output> {
-    @Schema(title = "Calendar ID (e.g., 'primary' or a calendar email)")
+    @Schema(title = "Calendar ID (e.g., 'primary' or a calendar email)", description = "Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the \"primary\" keyword.")
     @NotNull
     protected Property<String> calendarId;
 
-    @Schema(title = "Event ID")
+    @Schema(title = "Event ID", description = "Event identifier.")
     @NotNull
     protected Property<String> eventId;
 
-    @Schema(title = "Upper bound on the number of attendees to include")
+    @Schema(title = "Upper bound on the number of attendees to include", description = "The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned. Optional.")
     protected Property<Integer> maxAttendees;
-
-    @Schema(title = "Whether to include the email of the organizer/attendees in the response")
-    @Builder.Default
-    protected Property<Boolean> alwaysIncludeEmail = Property.ofValue(false);
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -65,24 +55,23 @@ public class GetEvent extends AbstractCalendar implements RunnableTask<GetEvent.
         String rCalendarId = runContext.render(calendarId).as(String.class).orElseThrow();
         String rEventId = runContext.render(eventId).as(String.class).orElseThrow();
         Integer rMaxAttendees = runContext.render(maxAttendees).as(Integer.class).orElse(null);
-        Boolean rAlwaysIncludeEmail= runContext.render(alwaysIncludeEmail).as(Boolean.class).orElse(false);
 
         var req = service.events().get(rCalendarId, rEventId);
-        if (rMaxAttendees != null) req.setMaxAttendees(rMaxAttendees);
-        req.setAlwaysIncludeEmail(rAlwaysIncludeEmail);
+        if (rMaxAttendees != null)
+            req.setMaxAttendees(rMaxAttendees);
 
         Event googleEvent = req.execute();
 
         Map<String, Object> eventMetadata = JacksonMapper.ofJson().convertValue(
-            googleEvent, new TypeReference<Map<String, Object>>() {}
-        );
+                googleEvent, new TypeReference<Map<String, Object>>() {
+                });
 
         logger.debug("fetched event '{}' from calendar '{}'", rEventId, rCalendarId);
 
         return Output.builder()
-            .event(io.kestra.plugin.googleworkspace.calendar.models.Event.of(googleEvent))
-            .metadata(eventMetadata)
-            .build();
+                .event(io.kestra.plugin.googleworkspace.calendar.models.Event.of(googleEvent))
+                .metadata(eventMetadata)
+                .build();
     }
 
     @Builder

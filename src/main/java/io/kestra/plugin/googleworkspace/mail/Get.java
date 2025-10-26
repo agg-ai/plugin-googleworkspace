@@ -26,16 +26,9 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Schema(
-    title = "Get a Gmail message",
-    description = "Retrieve a specific Gmail message by ID with full content and metadata"
-)
-@Plugin(
-    examples = {
-        @Example(
-            title = "Get a message by ID",
-            full = true,
-            code = """
+@Schema(title = "Get a Gmail message", description = "Retrieve a specific Gmail message by ID with full content and metadata")
+@Plugin(examples = {
+        @Example(title = "Get a message by ID", full = true, code = """
                 id: get_gmail_message
                 namespace: company.team
 
@@ -53,12 +46,8 @@ import java.util.stream.Collectors;
                     clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
                     refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     messageId: "{{ outputs.list_messages.messages[0].id }}"
-                """
-        ),
-        @Example(
-            title = "Get message with specific format",
-            full = true,
-            code = """
+                """),
+        @Example(title = "Get message with specific format", full = true, code = """
                 id: get_message_metadata
                 namespace: company.team
 
@@ -70,22 +59,15 @@ import java.util.stream.Collectors;
                     refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     messageId: "1a2b3c4d5e6f7890"
                     format: full
-                """
-        )
-    }
-)
+                """)
+})
 public class Get extends AbstractMail implements RunnableTask<Get.Output> {
-    @Schema(
-        title = "Message ID",
-        description = "The ID of the message to retrieve"
-    )
+    @Schema(title = "Message ID", description = "The ID of the message to retrieve")
     @NotNull
     private Property<String> messageId;
 
-    @Schema(
-        title = "Message format",
-        description = "The format to return the message payload in (options: minimal, full, raw, metadata)"
-    )
+    @Schema(title = "Message format", description = "The format to return the message payload in (options: minimal, full, raw, metadata)", allowableValues = {
+            "minimal", "full", "raw", "metadata" })
     @Builder.Default
     private Property<String> format = Property.ofValue("full");
 
@@ -94,9 +76,10 @@ public class Get extends AbstractMail implements RunnableTask<Get.Output> {
         Gmail gmail = this.connection(runContext);
 
         var rMessageId = runContext.render(this.messageId).as(String.class)
-            .orElseThrow(() -> new IllegalArgumentException("messageId is required"));
+                .orElseThrow(() -> new IllegalArgumentException("messageId is required"));
 
         var rFormat = runContext.render(this.format).as(String.class).orElse("full");
+        rFormat = rFormat.isEmpty() ? "full" : rFormat;
 
         Gmail.Users.Messages.Get request = gmail.users().messages().get("me", rMessageId);
         request.setFormat(rFormat);
@@ -104,19 +87,19 @@ public class Get extends AbstractMail implements RunnableTask<Get.Output> {
         Message message = request.execute();
 
         return Output.builder()
-            .message(convertMessage(message))
-            .build();
+                .message(convertMessage(message))
+                .build();
     }
 
     private io.kestra.plugin.googleworkspace.mail.models.Message convertMessage(Message message) {
         var builder = io.kestra.plugin.googleworkspace.mail.models.Message.builder()
-            .id(message.getId())
-            .threadId(message.getThreadId())
-            .labelIds(message.getLabelIds())
-            .snippet(message.getSnippet())
-            .historyId(message.getHistoryId() != null ? message.getHistoryId().toString() : null)
-            .sizeEstimate(message.getSizeEstimate() != null ? message.getSizeEstimate().longValue() : null)
-            .raw(message.getRaw());
+                .id(message.getId())
+                .threadId(message.getThreadId())
+                .labelIds(message.getLabelIds())
+                .snippet(message.getSnippet())
+                .historyId(message.getHistoryId() != null ? message.getHistoryId().toString() : null)
+                .sizeEstimate(message.getSizeEstimate() != null ? message.getSizeEstimate().longValue() : null)
+                .raw(message.getRaw());
 
         if (message.getInternalDate() != null) {
             builder.internalDate(Instant.ofEpochMilli(message.getInternalDate()));
@@ -157,8 +140,8 @@ public class Get extends AbstractMail implements RunnableTask<Get.Output> {
             java.util.List<Attachment> attachments = new ArrayList<>();
             String[] bodyContent = extractBodyAndAttachments(payload, attachments);
             builder.textPlain(bodyContent[0])
-                   .textHtml(bodyContent[1])
-                   .attachments(attachments);
+                    .textHtml(bodyContent[1])
+                    .attachments(attachments);
         }
 
         return builder.build();
@@ -170,9 +153,9 @@ public class Get extends AbstractMail implements RunnableTask<Get.Output> {
         }
 
         return Arrays.stream(emailHeader.split(","))
-            .map(String::trim)
-            .filter(email -> !email.isEmpty())
-            .collect(Collectors.toList());
+                .map(String::trim)
+                .filter(email -> !email.isEmpty())
+                .collect(Collectors.toList());
     }
 
     private String[] extractBodyAndAttachments(MessagePart part, java.util.List<Attachment> attachments) {
@@ -182,8 +165,10 @@ public class Get extends AbstractMail implements RunnableTask<Get.Output> {
             // Multipart message
             for (MessagePart subPart : part.getParts()) {
                 String[] subResult = extractBodyAndAttachments(subPart, attachments);
-                if (result[0] == null) result[0] = subResult[0];
-                if (result[1] == null) result[1] = subResult[1];
+                if (result[0] == null)
+                    result[0] = subResult[0];
+                if (result[1] == null)
+                    result[1] = subResult[1];
             }
         } else {
             // Single part message
@@ -198,12 +183,12 @@ public class Get extends AbstractMail implements RunnableTask<Get.Output> {
                     String filename = getFilename(part);
                     if (filename != null) {
                         Attachment attachment = Attachment.builder()
-                            .attachmentId(part.getBody() != null ? part.getBody().getAttachmentId() : null)
-                            .mimeType(mimeType)
-                            .filename(filename)
-                            .size(part.getBody() != null ? part.getBody().getSize() : null)
-                            .data(part.getBody() != null ? part.getBody().getData() : null)
-                            .build();
+                                .attachmentId(part.getBody() != null ? part.getBody().getAttachmentId() : null)
+                                .mimeType(mimeType)
+                                .filename(filename)
+                                .size(part.getBody() != null ? part.getBody().getSize() : null)
+                                .data(part.getBody() != null ? part.getBody().getData() : null)
+                                .build();
                         attachments.add(attachment);
                     }
                 }
@@ -222,7 +207,7 @@ public class Get extends AbstractMail implements RunnableTask<Get.Output> {
         if (headers != null) {
             for (MessagePartHeader header : headers) {
                 if ("Content-Disposition".equalsIgnoreCase(header.getName()) &&
-                    header.getValue() != null && header.getValue().contains("attachment")) {
+                        header.getValue() != null && header.getValue().contains("attachment")) {
                     return true;
                 }
             }

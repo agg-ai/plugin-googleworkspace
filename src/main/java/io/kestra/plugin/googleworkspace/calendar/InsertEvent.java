@@ -5,6 +5,7 @@ import com.google.api.services.calendar.model.Event;
 
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -18,11 +19,8 @@ import org.slf4j.Logger;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Plugin(
-    examples = {
-        @Example(
-            full = true,
-            code = """
+@Plugin(examples = {
+        @Example(full = true, code = """
                 id: googleworkspace_calendar_insert_event
                 namespace: company.team
 
@@ -42,14 +40,15 @@ import org.slf4j.Logger;
                       timeZone: "Asia/Calcutta"
                     creator:
                       email: myself@gmail.com
-                """
-        )
-    }
-)
-@Schema(
-    title = "Insert an event into Google Calendar."
-)
+                """)
+})
+@Schema(title = "Insert an event into Google Calendar.")
 public class InsertEvent extends AbstractInsertEvent implements RunnableTask<InsertEvent.Output> {
+    @Schema(title = "Send update emails (default: none)", description = "Guests who should receive notifications about the deletion of the event.", allowableValues = {
+            "all", "none", "externalOnly" })
+    @Builder.Default
+    protected Property<String> sendUpdates = Property.ofValue("none");
+
     @Override
     public Output run(RunContext runContext) throws Exception {
         Calendar service = this.connection(runContext);
@@ -57,27 +56,29 @@ public class InsertEvent extends AbstractInsertEvent implements RunnableTask<Ins
 
         Event eventMetadata = event(runContext);
 
-        var renderedCalendarId= runContext.render(calendarId).as(String.class).orElseThrow();
+        String sendUpdatesRendered = runContext.render(sendUpdates).as(String.class).orElse("none");
+        sendUpdatesRendered = sendUpdatesRendered.isEmpty() ? "none" : sendUpdatesRendered;
+
+        var renderedCalendarId = runContext.render(calendarId).as(String.class).orElseThrow();
         Event event = service
-            .events()
-            .insert(renderedCalendarId, eventMetadata)
-            .setFields("id")
-            .execute();
+                .events()
+                .insert(renderedCalendarId, eventMetadata)
+                .setSendUpdates(sendUpdatesRendered)
+                .setFields("id")
+                .execute();
 
         logger.debug("Inserted event '{}' in calendar '{}'", event.getId(), renderedCalendarId);
 
         return Output
-            .builder()
-            .event(io.kestra.plugin.googleworkspace.calendar.models.Event.of(event))
-            .build();
+                .builder()
+                .event(io.kestra.plugin.googleworkspace.calendar.models.Event.of(event))
+                .build();
     }
 
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(
-            title = "Event ID of the inserted event"
-        )
+        @Schema(title = "Event ID of the inserted event")
         private final io.kestra.plugin.googleworkspace.calendar.models.Event event;
     }
 }

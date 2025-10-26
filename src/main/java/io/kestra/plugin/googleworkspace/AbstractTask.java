@@ -42,32 +42,41 @@ public abstract class AbstractTask extends Task implements GcpInterface {
             throws IllegalVariableEvaluationException, IOException {
         GoogleCredentials credentials;
 
-        if (serviceAccount != null) {
-            String serviceAccount = runContext.render(this.serviceAccount).as(String.class).orElseThrow();
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(serviceAccount.getBytes());
-            credentials = ServiceAccountCredentials.fromStream(byteArrayInputStream);
-            Logger logger = runContext.logger();
+        String renderedAccessToken = runContext.render(this.accessToken).as(String.class).orElseThrow();
+        credentials = GoogleCredentials.create(new AccessToken(renderedAccessToken, null));
 
-            if (logger.isTraceEnabled()) {
-                byteArrayInputStream.reset();
-                Map<String, String> jsonKey = JacksonMapper.ofJson().readValue(byteArrayInputStream,
-                        new TypeReference<>() {
-                        });
-                if (jsonKey.containsKey("client_email")) {
-                    logger.trace(" • Using service account: {}", jsonKey.get("client_email"));
-                }
-            }
-        } else if (accessToken != null) {
-            String renderedAccessToken = runContext.render(this.accessToken).as(String.class).orElseThrow();
-            credentials = GoogleCredentials.create(new AccessToken(renderedAccessToken, null));
-        } else {
-            credentials = GoogleCredentials.getApplicationDefault();
-        }
+        // if (serviceAccount != null) {
+        // String serviceAccount =
+        // runContext.render(this.serviceAccount).as(String.class).orElseThrow();
+        // ByteArrayInputStream byteArrayInputStream = new
+        // ByteArrayInputStream(serviceAccount.getBytes());
+        // credentials = ServiceAccountCredentials.fromStream(byteArrayInputStream);
+        // Logger logger = runContext.logger();
 
-        var renderedScopes = runContext.render(this.getScopes()).asList(String.class);
-        if (!renderedScopes.isEmpty()) {
-            credentials = credentials.createScoped(renderedScopes);
-        }
+        // if (logger.isTraceEnabled()) {
+        // byteArrayInputStream.reset();
+        // Map<String, String> jsonKey =
+        // JacksonMapper.ofJson().readValue(byteArrayInputStream,
+        // new TypeReference<>() {
+        // });
+        // if (jsonKey.containsKey("client_email")) {
+        // logger.trace(" • Using service account: {}", jsonKey.get("client_email"));
+        // }
+        // }
+        // } else if (accessToken != null) {
+        // String renderedAccessToken =
+        // runContext.render(this.accessToken).as(String.class).orElseThrow();
+        // credentials = GoogleCredentials.create(new AccessToken(renderedAccessToken,
+        // null));
+        // } else {
+        // credentials = GoogleCredentials.getApplicationDefault();
+        // }
+
+        // var renderedScopes =
+        // runContext.render(this.getScopes()).asList(String.class);
+        // if (!renderedScopes.isEmpty()) {
+        // credentials = credentials.createScoped(renderedScopes);
+        // }
 
         var renderedTiemout = runContext.render(this.readTimeout).as(Integer.class).orElseThrow();
         return new HttpCredentialsAdapter(credentials) {

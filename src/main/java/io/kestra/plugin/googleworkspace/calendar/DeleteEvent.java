@@ -20,12 +20,8 @@ import org.slf4j.Logger;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Plugin(
-    examples = {
-        @Example(
-            title = "Delete a calendar Event",
-            full = true,
-            code = """
+@Plugin(examples = {
+        @Example(title = "Delete a calendar Event", full = true, code = """
                 id: googleworkspace_calendar_delete_event
                 namespace: company.team
 
@@ -36,24 +32,20 @@ import org.slf4j.Logger;
                     calendarId: primary
                     eventId: "abcdef123456"
                     sendUpdates: all
-                """
-        )
-    }
-)
+                """)
+})
 @Schema(title = "Delete a Google Calendar event.")
 public class DeleteEvent extends AbstractCalendar implements RunnableTask<VoidOutput> {
-    @Schema(title = "Calendar ID")
+    @Schema(title = "Calendar ID (e.g., 'primary' or a calendar email)", description = "Calendar identifier. To retrieve calendar IDs call the calendarList.list method. If you want to access the primary calendar of the currently logged in user, use the \"primary\" keyword.")
     @NotNull
     protected Property<String> calendarId;
 
-    @Schema(title = "Event ID")
+    @Schema(title = "Event ID", description = "Event identifier.")
     @NotNull
     protected Property<String> eventId;
 
-    @Schema(
-        title = "Send update emails (default: none)",
-        allowableValues = {"all", "none", "externalOnly"}
-    )
+    @Schema(title = "Send update emails (default: none)", description = "Guests who should receive notifications about the deletion of the event.", allowableValues = {
+            "all", "none", "externalOnly" })
     @Builder.Default
     protected Property<String> sendUpdates = Property.ofValue("none");
 
@@ -64,6 +56,7 @@ public class DeleteEvent extends AbstractCalendar implements RunnableTask<VoidOu
         String rCalendarId = runContext.render(calendarId).as(String.class).orElseThrow();
         String rEventId = runContext.render(eventId).as(String.class).orElseThrow();
         String rSendUpdates = runContext.render(sendUpdates).as(String.class).orElse("none");
+        rSendUpdates = rSendUpdates.isEmpty() ? "none" : rSendUpdates;
 
         service.events()
                 .delete(rCalendarId, rEventId)

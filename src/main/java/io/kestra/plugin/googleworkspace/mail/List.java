@@ -10,6 +10,7 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.common.FetchType;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
+import io.kestra.plugin.googleworkspace.helpers.PropertyHelper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -28,16 +29,9 @@ import java.util.ArrayList;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Schema(
-    title = "List Gmail messages",
-    description = "Retrieve a list of messages from Gmail inbox or specific labels using Gmail API"
-)
-@Plugin(
-    examples = {
-        @Example(
-            title = "List all messages in inbox",
-            full = true,
-            code = """
+@Schema(title = "List Gmail messages", description = "Retrieve a list of messages from Gmail inbox or specific labels using Gmail API")
+@Plugin(examples = {
+        @Example(title = "List all messages in inbox", full = true, code = """
                 id: list_messages
                 namespace: company.team
 
@@ -48,12 +42,8 @@ import java.util.ArrayList;
                     clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
                     refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     maxResults: 10
-                """
-        ),
-        @Example(
-            title = "List unread messages",
-            full = true,
-            code = """
+                """),
+        @Example(title = "List unread messages", full = true, code = """
                 id: list_unread_messages
                 namespace: company.team
 
@@ -68,12 +58,8 @@ import java.util.ArrayList;
                       - INBOX
                     maxResults: 50
                     fetchType: STORE
-                """
-        ),
-        @Example(
-            title = "Get first message only",
-            full = true,
-            code = """
+                """),
+        @Example(title = "Get first message only", full = true, code = """
                 id: get_first_message
                 namespace: company.team
 
@@ -85,45 +71,28 @@ import java.util.ArrayList;
                     refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     fetchType: FETCH_ONE
                     maxResults: 1
-                """
-        )
-    }
-)
+                """)
+})
 public class List extends AbstractMail implements RunnableTask<List.Output> {
-    @Schema(
-        title = "Gmail search query",
-        description = "Search query using Gmail search syntax (e.g., 'is:unread', 'from:sender@example.com', 'subject:important')"
-    )
+    @Schema(title = "Gmail search query", description = "Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, \"from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread\".")
     private Property<String> query;
 
-    @Schema(
-        title = "Label IDs to filter messages",
-        description = "List of label IDs to restrict the search (e.g., INBOX, SENT, DRAFT, UNREAD)"
-    )
+    @Schema(title = "Label IDs to filter messages", description = "Only return messages with labels that match all of the specified label IDs. Messages in a thread might have labels that other messages in the same thread don't have.")
     private Property<java.util.List<String>> labelIds;
 
-    @Schema(
-        title = "Maximum number of results",
-        description = "Maximum number of messages to return (default: 100, max: 500)"
-    )
+    @Schema(title = "Maximum number of results", description = "Maximum number of messages to return (default: 100, max: 500)")
     @Builder.Default
     private Property<Integer> maxResults = Property.ofValue(100);
 
-    @Schema(
-        title = "Include spam and trash",
-        description = "Whether to include messages from SPAM and TRASH in the results"
-    )
+    @Schema(title = "Include spam and trash", description = "Whether to include messages from SPAM and TRASH in the results")
     @Builder.Default
     private Property<Boolean> includeSpamTrash = Property.ofValue(false);
 
-    @Schema(
-        title = "The way you want to store the data",
-        description = """
+    @Schema(title = "The way you want to store the data", description = """
             FETCH - outputs the messages as an output
             FETCH_ONE - outputs the first message only as an output
             STORE - stores all messages to a file
-            NONE - no output"""
-    )
+            NONE - no output""")
     @NotNull
     @Builder.Default
     private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
@@ -161,17 +130,18 @@ public class List extends AbstractMail implements RunnableTask<List.Output> {
 
         // Transform Gmail messages to our message model
         java.util.List<io.kestra.plugin.googleworkspace.mail.models.Message> transformedMessages = messages.stream()
-            .map(msg -> io.kestra.plugin.googleworkspace.mail.models.Message.builder()
-                .id(msg.getId())
-                .threadId(msg.getThreadId())
-                .build())
-            .toList();
+                .map(msg -> io.kestra.plugin.googleworkspace.mail.models.Message.builder()
+                        .id(msg.getId())
+                        .threadId(msg.getThreadId())
+                        .build())
+                .toList();
 
         // Handle different fetch types
-        var rFetchType = runContext.render(this.fetchType).as(FetchType.class).orElse(FetchType.FETCH);
+        var rFetchType = PropertyHelper.safeRender(runContext, fetchType, FetchType.FETCH, FetchType.class);
         Output.OutputBuilder output = Output.builder()
-            .resultSizeEstimate(response.getResultSizeEstimate() != null ? response.getResultSizeEstimate().intValue() : 0)
-            .nextPageToken(response.getNextPageToken());
+                .resultSizeEstimate(
+                        response.getResultSizeEstimate() != null ? response.getResultSizeEstimate().intValue() : 0)
+                .nextPageToken(response.getNextPageToken());
 
         switch (rFetchType) {
             case FETCH_ONE -> {
@@ -196,7 +166,8 @@ public class List extends AbstractMail implements RunnableTask<List.Output> {
         return output.build();
     }
 
-    private File storeMessages(RunContext runContext, java.util.List<io.kestra.plugin.googleworkspace.mail.models.Message> messages) throws IOException {
+    private File storeMessages(RunContext runContext,
+            java.util.List<io.kestra.plugin.googleworkspace.mail.models.Message> messages) throws IOException {
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
 
         try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)) {
