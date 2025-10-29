@@ -29,7 +29,6 @@ import java.util.Map;
         tasks:
           - id: get_event
             type: io.kestra.plugin.googleworkspace.calendar.GetEvent
-            serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT_JSON') }}"
             calendarId: primary
             eventId: "abcdef123456"
             maxAttendees: 50

@@ -128,7 +128,6 @@ public abstract class AbstractInsertEvent extends AbstractCalendar {
 
         var renderedAttendees = PropertyHelper.safeRenderList(runContext, attendees, new ArrayList<>(), Attendee.class,
                 true);
-        runContext.logger().info("renderedAttendees: {}", renderedAttendees);
         if (renderedAttendees != null && !renderedAttendees.isEmpty()) {
             List<EventAttendee> eventAttendees = new ArrayList<>();
             for (Attendee attendee : renderedAttendees) {
@@ -136,7 +135,6 @@ public abstract class AbstractInsertEvent extends AbstractCalendar {
                         .setDisplayName(attendee.displayName)
                         .setEmail(attendee.email));
             }
-            runContext.logger().info("eventAttendees: {}", eventAttendees);
             eventMetadata.setAttendees(eventAttendees);
         }
 

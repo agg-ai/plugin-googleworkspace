@@ -11,6 +11,7 @@ import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.googleworkspace.calendar.AbstractInsertEvent.Attendee;
 import io.kestra.plugin.googleworkspace.helpers.PropertyHelper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -33,7 +34,6 @@ import java.util.List;
           tasks:
             - id: update_event
               type: io.kestra.plugin.googleworkspace.calendar.UpdateEvent
-              serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT_JSON') }}"
               calendarId: primary
               eventId: "abcdef123456"
               patch: true
@@ -102,84 +102,75 @@ public class UpdateEvent extends AbstractCalendar implements RunnableTask<Update
 
         String rCalendarId = runContext.render(calendarId).as(String.class).orElseThrow();
         String rEventId = runContext.render(eventId).as(String.class).orElseThrow();
-        Boolean rPatch = runContext.render(patch).as(Boolean.class).orElse(true);
-        String rSendUpdates = runContext.render(sendUpdates).as(String.class).orElse("none");
-        String rSummary = runContext.render(summary).as(String.class).orElse(null);
-        String rDescription = PropertyHelper.safeRender(runContext, eventDescription,
-                null, String.class);
-        String rLocation = runContext.render(location).as(String.class).orElse(null);
-        String rStartDateTime = (startTime != null)
-                ? runContext.render(startTime.getDateTime()).as(String.class).orElse(null)
-                : null;
-        String rStartTimeZone = (startTime != null)
-                ? runContext.render(startTime.getTimeZone()).as(String.class).orElse(null)
-                : null;
-        String rEndDateTime = (endTime != null) ? runContext.render(endTime.getDateTime()).as(String.class).orElse(null)
-                : null;
-        String rEndTimeZone = (endTime != null) ? runContext.render(endTime.getTimeZone()).as(String.class).orElse(null)
-                : null;
+        Boolean renderedPatch = PropertyHelper.safeRender(runContext, patch, true, Boolean.class);
+        String renderedSendUpdates = PropertyHelper.safeRender(runContext, sendUpdates, "none", String.class);
+        String renderedSummary = PropertyHelper.safeRender(runContext, summary, null, String.class);
+        String renderedDescription = PropertyHelper.safeRender(runContext, eventDescription, null,
+                String.class);
+        String renderedLocation = PropertyHelper.safeRender(runContext, location, null, String.class);
+        AbstractInsertEvent.CalendarTime renderedStartTime = PropertyHelper.safeRender(runContext, startTime,
+                null, AbstractInsertEvent.CalendarTime.class, true);
+        AbstractInsertEvent.CalendarTime renderedEndTime = PropertyHelper.safeRender(runContext, endTime, null,
+                AbstractInsertEvent.CalendarTime.class, true);
 
-        List<EventAttendee> rAttendees = null;
-        if (attendees != null) {
-            rAttendees = new ArrayList<>();
-            for (var a : attendees) {
-                String rDisplayName = runContext.render(a.getDisplayName()).as(String.class).orElse(null);
-                String rEmail = runContext.render(a.getEmail()).as(String.class).orElse(null);
-                rAttendees.add(new EventAttendee().setDisplayName(rDisplayName).setEmail(rEmail));
-            }
-        }
+        var renderedAttendees = PropertyHelper.safeRenderList(runContext, attendees, new ArrayList<>(), Attendee.class,
+                true);
 
-        String rStatus = runContext.render(status).as(String.class).orElse(null);
+        String renderedStatus = PropertyHelper.safeRender(runContext, status, null, String.class);
 
         Event rBody = new Event();
 
-        if (rSummary != null) {
-            rBody.setSummary(rSummary);
+        if (renderedSummary != null && !renderedSummary.isEmpty()) {
+            rBody.setSummary(renderedSummary);
         }
 
-        if (rDescription != null) {
-            rBody.setDescription(rDescription);
+        if (renderedDescription != null && !renderedDescription.isEmpty()) {
+            rBody.setDescription(renderedDescription);
         }
 
-        if (rLocation != null) {
-            rBody.setLocation(rLocation);
+        if (renderedLocation != null && !renderedLocation.isEmpty()) {
+            rBody.setLocation(renderedLocation);
         }
 
-        if (rStartDateTime != null || rStartTimeZone != null) {
+        if (renderedStartTime != null) {
             rBody.setStart(new EventDateTime()
-                    .setDateTime(rStartDateTime != null ? new DateTime(rStartDateTime) : null)
-                    .setTimeZone(rStartTimeZone));
-
+                    .setDateTime(new DateTime(renderedStartTime.dateTime))
+                    .setTimeZone(renderedStartTime.timeZone));
         }
 
-        if (rEndDateTime != null || rEndTimeZone != null) {
+        if (renderedEndTime != null) {
             rBody.setEnd(new EventDateTime()
-                    .setDateTime(rEndDateTime != null ? new DateTime(rEndDateTime) : null)
-                    .setTimeZone(rEndTimeZone));
+                    .setDateTime(new DateTime(renderedEndTime.dateTime))
+                    .setTimeZone(renderedEndTime.timeZone));
         }
 
-        if (rAttendees != null) {
-            rBody.setAttendees(rAttendees);
+        if (renderedAttendees != null && !renderedAttendees.isEmpty()) {
+            List<EventAttendee> eventAttendees = new ArrayList<>();
+            for (Attendee attendee : renderedAttendees) {
+                eventAttendees.add(new EventAttendee()
+                        .setDisplayName(attendee.displayName)
+                        .setEmail(attendee.email));
+            }
+
+            if (!eventAttendees.isEmpty()) {
+                rBody.setAttendees(eventAttendees);
+            }
         }
 
-        if (rStatus != null) {
-            rBody.setStatus(rStatus);
+        if (renderedStatus != null && !renderedStatus.isEmpty()) {
+            rBody.setStatus(renderedStatus);
         }
 
-        Event updatedEvent = rPatch
+        Event updatedEvent = renderedPatch
                 ? service.events().patch(rCalendarId, rEventId,
-                        rBody).setSendUpdates(rSendUpdates).execute()
+                        rBody).setSendUpdates(renderedSendUpdates).execute()
                 : service.events().update(rCalendarId, rEventId,
-                        rBody).setSendUpdates(rSendUpdates).execute();
+                        rBody).setSendUpdates(renderedSendUpdates).execute();
 
-        logger.debug("{} event '{}' in calendar '{}'", rPatch ? "Patched" : "Updated", rEventId, rCalendarId);
+        logger.debug("{} event '{}' in calendar '{}'", renderedPatch ? "Patched" : "Updated", rEventId, rCalendarId);
 
         return Output.builder()
                 .event(io.kestra.plugin.googleworkspace.calendar.models.Event.of(updatedEvent))
-                .build();
-
-        return Output.builder()
-                .event(null)
                 .build();
     }
 

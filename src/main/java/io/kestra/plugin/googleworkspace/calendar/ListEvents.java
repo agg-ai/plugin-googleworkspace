@@ -30,7 +30,6 @@ import java.util.Map;
             tasks:
               - id: list_events
                 type: io.kestra.plugin.googleworkspace.calendar.ListEvents
-                serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT_JSON') }}"
                 calendarId: primary
                 timeMin: "2025-08-10T00:00:00Z"
                 timeMax: "2025-08-12T00:00:00Z"

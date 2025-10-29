@@ -41,9 +41,6 @@ import java.util.Properties;
                 tasks:
                   - id: send_email
                     type: io.kestra.plugin.googleworkspace.mail.Send
-                    clientId: "{{ secret('GMAIL_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
-                    refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     to:
                       - recipient@example.com
                     subject: Test Email
@@ -56,9 +53,6 @@ import java.util.Properties;
                 tasks:
                   - id: send_rich_email
                     type: io.kestra.plugin.googleworkspace.mail.Send
-                    clientId: "{{ secret('GMAIL_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
-                    refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     to:
                       - recipient@example.com
                     cc:

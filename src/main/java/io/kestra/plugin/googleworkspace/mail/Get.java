@@ -35,16 +35,10 @@ import java.util.stream.Collectors;
                 tasks:
                   - id: list_messages
                     type: io.kestra.plugin.googleworkspace.mail.List
-                    clientId: "{{ secret('GMAIL_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
-                    refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     maxResults: 1
 
                   - id: get_message
                     type: io.kestra.plugin.googleworkspace.mail.Get
-                    clientId: "{{ secret('GMAIL_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
-                    refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     messageId: "{{ outputs.list_messages.messages[0].id }}"
                 """),
         @Example(title = "Get message with specific format", full = true, code = """
@@ -54,9 +48,6 @@ import java.util.stream.Collectors;
                 tasks:
                   - id: get_full_message
                     type: io.kestra.plugin.googleworkspace.mail.Get
-                    clientId: "{{ secret('GMAIL_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
-                    refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     messageId: "1a2b3c4d5e6f7890"
                     format: full
                 """)

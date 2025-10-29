@@ -38,9 +38,6 @@ import java.util.ArrayList;
                 tasks:
                   - id: list_messages
                     type: io.kestra.plugin.googleworkspace.mail.List
-                    clientId: "{{ secret('GMAIL_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
-                    refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     maxResults: 10
                 """),
         @Example(title = "List unread messages", full = true, code = """
@@ -50,9 +47,6 @@ import java.util.ArrayList;
                 tasks:
                   - id: list_unread
                     type: io.kestra.plugin.googleworkspace.mail.List
-                    clientId: "{{ secret('GMAIL_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
-                    refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     query: is:unread
                     labelIds:
                       - INBOX
@@ -66,9 +60,6 @@ import java.util.ArrayList;
                 tasks:
                   - id: get_first
                     type: io.kestra.plugin.googleworkspace.mail.List
-                    clientId: "{{ secret('GMAIL_CLIENT_ID') }}"
-                    clientSecret: "{{ secret('GMAIL_CLIENT_SECRET') }}"
-                    refreshToken: "{{ secret('GMAIL_REFRESH_TOKEN') }}"
                     fetchType: FETCH_ONE
                     maxResults: 1
                 """)
