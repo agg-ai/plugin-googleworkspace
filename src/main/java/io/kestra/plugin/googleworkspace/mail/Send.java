@@ -8,6 +8,7 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.googleworkspace.helpers.PropertyHelper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import jakarta.validation.constraints.NotNull;
@@ -137,7 +138,8 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         }
 
         // Set CC recipients
-        var rCcAddresses = runContext.render(this.cc).asList(String.class);
+        var rCcAddresses = PropertyHelper.safeRenderList(runContext, this.cc,
+                null, String.class);
         if (rCcAddresses != null && !rCcAddresses.isEmpty()) {
             runContext.logger().debug("Setting CC recipients: {}", rCcAddresses.size());
             InternetAddress[] ccArray = rCcAddresses.stream()
@@ -153,7 +155,8 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         }
 
         // Set BCC recipients
-        var rBccAddresses = runContext.render(this.bcc).asList(String.class);
+        var rBccAddresses = PropertyHelper.safeRenderList(runContext, this.bcc,
+                null, String.class);
         if (rBccAddresses != null && !rBccAddresses.isEmpty()) {
             runContext.logger().debug("Setting BCC recipients: {}", rBccAddresses.size());
             InternetAddress[] bccArray = rBccAddresses.stream()
@@ -187,7 +190,8 @@ public class Send extends AbstractMail implements RunnableTask<Send.Output> {
         }
 
         // Handle content and attachments
-        var rAttachmentList = runContext.render(this.attachments).asList(String.class);
+        var rAttachmentList = PropertyHelper.safeRenderList(runContext,
+                this.attachments, null, String.class);
         if (rAttachmentList != null && !rAttachmentList.isEmpty()) {
             runContext.logger().debug("Adding {} attachments to email", rAttachmentList.size());
             // Create multipart message with attachments

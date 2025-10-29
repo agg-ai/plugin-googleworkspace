@@ -4,6 +4,7 @@ import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.googleworkspace.helpers.PropertyHelper;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -35,7 +36,7 @@ public abstract class AbstractInsertEvent extends AbstractCalendar {
 
     @Schema(title = "Description of the event")
     @PluginProperty(dynamic = true)
-    protected String description;
+    protected Property<String> eventDescription;
 
     @Schema(title = "Geographic location of the event as free-form text")
     protected Property<String> location;
@@ -43,20 +44,19 @@ public abstract class AbstractInsertEvent extends AbstractCalendar {
     @Schema(title = "Start time of the event")
     @NotNull
     @PluginProperty
-    protected CalendarTime startTime;
+    protected Property<CalendarTime> startTime;
 
     @Schema(title = "End time of the event")
     @NotNull
     @PluginProperty
-    protected CalendarTime endTime;
+    protected Property<CalendarTime> endTime;
 
     @Schema(title = "Creator of the event")
     @PluginProperty
-    protected Attendee creator;
+    protected Property<Attendee> creator;
 
     @Schema(title = "List of attendees in the event")
-    @PluginProperty(dynamic = true)
-    protected List<Attendee> attendees;
+    protected Property<List<Attendee>> attendees;
 
     @Builder
     @ToString
@@ -64,12 +64,13 @@ public abstract class AbstractInsertEvent extends AbstractCalendar {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
+    @lombok.extern.jackson.Jacksonized
     public static class CalendarTime {
         @Schema(title = "Time of the event in the ISO 8601 Datetime format, for example, `2024-11-28T09:00:00-07:00`")
-        protected Property<String> dateTime;
+        protected String dateTime;
 
         @Schema(title = "Timezone associated with the dateTime, for example, `America/Los_Angeles`")
-        protected Property<String> timeZone;
+        protected String timeZone;
     }
 
     @Builder
@@ -78,52 +79,72 @@ public abstract class AbstractInsertEvent extends AbstractCalendar {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
+    @lombok.extern.jackson.Jacksonized
     public static class Attendee {
         @Schema(title = "Display name of the attendee")
-        protected Property<String> displayName;
+        protected String displayName;
 
         @Schema(title = "Email of the attendee")
-        protected Property<String> email;
+        protected String email;
     }
 
     protected Event event(RunContext runContext) throws IllegalVariableEvaluationException {
         Event eventMetadata = new Event();
 
-        eventMetadata.setSummary(runContext.render(this.summary).as(String.class).orElseThrow());
-        if (this.description != null) {
-            eventMetadata.setDescription(runContext.render(this.description));
+        var renderedSummary = runContext.render(this.summary).as(String.class).orElseThrow();
+        eventMetadata.setSummary(renderedSummary);
+
+        var renderedDescription = PropertyHelper.safeRender(runContext, this.eventDescription, null, String.class);
+        if (renderedDescription != null && !renderedDescription.isEmpty()) {
+            eventMetadata.setDescription(renderedDescription);
         }
 
-        if (this.location != null) {
-            eventMetadata.setLocation(runContext.render(this.location).as(String.class).orElseThrow());
+        var renderedLocation = PropertyHelper.safeRender(runContext, this.location, null, String.class);
+        if (renderedLocation != null && !renderedLocation.isEmpty()) {
+            eventMetadata.setLocation(renderedLocation);
+        }
+
+        CalendarTime renderedStartTime = PropertyHelper.safeRender(runContext, this.startTime, null, CalendarTime.class,
+                true);
+        if (renderedStartTime == null) {
+            throw new IllegalVariableEvaluationException("Failed to render startTime property");
+        }
+
+        CalendarTime renderedEndTime = PropertyHelper.safeRender(runContext, this.endTime, null, CalendarTime.class,
+                true);
+        if (renderedEndTime == null) {
+            throw new IllegalVariableEvaluationException("Failed to render endTime property");
         }
 
         EventDateTime eventStartTime = new EventDateTime()
-                .setDateTime(new DateTime(runContext.render(startTime.dateTime).as(String.class).orElse(null)))
-                .setTimeZone(runContext.render(startTime.timeZone).as(String.class).orElse(null));
+                .setDateTime(new DateTime(renderedStartTime.dateTime))
+                .setTimeZone(renderedStartTime.timeZone);
         eventMetadata.setStart(eventStartTime);
 
         EventDateTime eventEndTime = new EventDateTime()
-                .setDateTime(new DateTime(runContext.render(endTime.dateTime).as(String.class).orElse(null)))
-                .setTimeZone(runContext.render(endTime.timeZone).as(String.class).orElse(null));
+                .setDateTime(new DateTime(renderedEndTime.dateTime))
+                .setTimeZone(renderedEndTime.timeZone);
         eventMetadata.setEnd(eventEndTime);
 
-        if (attendees != null && attendees.size() > 0) {
+        var renderedAttendees = PropertyHelper.safeRenderList(runContext, attendees, new ArrayList<>(), Attendee.class,
+                true);
+        runContext.logger().info("renderedAttendees: {}", renderedAttendees);
+        if (renderedAttendees != null && !renderedAttendees.isEmpty()) {
             List<EventAttendee> eventAttendees = new ArrayList<>();
-            for (Attendee attendee : attendees) {
-                EventAttendee eventAttendee = new EventAttendee()
-                        .setDisplayName(runContext.render(attendee.displayName).as(String.class).orElse(null))
-                        .setEmail(runContext.render(attendee.email).as(String.class).orElse(null));
-                eventAttendees.add(eventAttendee);
+            for (Attendee attendee : renderedAttendees) {
+                eventAttendees.add(new EventAttendee()
+                        .setDisplayName(attendee.displayName)
+                        .setEmail(attendee.email));
             }
+            runContext.logger().info("eventAttendees: {}", eventAttendees);
             eventMetadata.setAttendees(eventAttendees);
         }
 
-        if (creator != null) {
-            Creator eventCreator = new Creator()
-                    .setDisplayName(runContext.render(creator.displayName).as(String.class).orElse(null))
-                    .setEmail(runContext.render(creator.email).as(String.class).orElse(null));
-            eventMetadata.setCreator(eventCreator);
+        var renderedCreator = PropertyHelper.safeRender(runContext, creator, null, Attendee.class, true);
+        if (renderedCreator != null) {
+            eventMetadata.setCreator(new Creator()
+                    .setDisplayName(renderedCreator.displayName)
+                    .setEmail(renderedCreator.email));
         }
 
         return eventMetadata;

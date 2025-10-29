@@ -109,7 +109,7 @@ public class List extends AbstractMail implements RunnableTask<List.Output> {
             request.setQ(rQuery);
         }
 
-        var rLabelIds = runContext.render(this.labelIds).asList(String.class);
+        var rLabelIds = PropertyHelper.safeRenderList(runContext, labelIds, new ArrayList<>(), String.class);
         if (rLabelIds != null && !rLabelIds.isEmpty()) {
             request.setLabelIds(rLabelIds);
         }
