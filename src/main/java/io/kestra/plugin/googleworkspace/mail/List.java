@@ -84,9 +84,6 @@ public class List extends AbstractMail implements RunnableTask<List.Output> {
             FETCH_ONE - outputs the first message only as an output
             STORE - stores all messages to a file
             NONE - no output""")
-    @NotNull
-    @Builder.Default
-    private Property<FetchType> fetchType = Property.ofValue(FetchType.FETCH);
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -127,46 +124,14 @@ public class List extends AbstractMail implements RunnableTask<List.Output> {
                         .build())
                 .toList();
 
-        // Handle different fetch types
-        var rFetchType = PropertyHelper.safeRender(runContext, fetchType, FetchType.FETCH, FetchType.class);
         Output.OutputBuilder output = Output.builder()
                 .resultSizeEstimate(
                         response.getResultSizeEstimate() != null ? response.getResultSizeEstimate().intValue() : 0)
                 .nextPageToken(response.getNextPageToken());
 
-        switch (rFetchType) {
-            case FETCH_ONE -> {
-                if (!transformedMessages.isEmpty()) {
-                    output.message(transformedMessages.get(0));
-                }
-            }
-            case STORE -> {
-                if (!transformedMessages.isEmpty()) {
-                    File tempFile = this.storeMessages(runContext, transformedMessages);
-                    output.uri(runContext.storage().putFile(tempFile));
-                }
-            }
-            case FETCH -> {
-                output.messages(transformedMessages);
-            }
-            case NONE -> {
-                // No output needed
-            }
-        }
+        output.messages(transformedMessages);
 
         return output.build();
-    }
-
-    private File storeMessages(RunContext runContext,
-            java.util.List<io.kestra.plugin.googleworkspace.mail.models.Message> messages) throws IOException {
-        File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
-
-        try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(tempFile), FileSerde.BUFFER_SIZE)) {
-            Flux<io.kestra.plugin.googleworkspace.mail.models.Message> flux = Flux.fromIterable(messages);
-            FileSerde.writeAll(fileWriter, flux).block();
-        }
-
-        return tempFile;
     }
 
     @Builder
