@@ -161,6 +161,8 @@ public class UpdateEvent extends AbstractCalendar implements RunnableTask<Update
             rBody.setStatus(renderedStatus);
         }
 
+        renderedSendUpdates = renderedSendUpdates.isEmpty() ? "none" : renderedSendUpdates;
+
         Event updatedEvent = renderedPatch
                 ? service.events().patch(rCalendarId, rEventId,
                         rBody).setSendUpdates(renderedSendUpdates).execute()
