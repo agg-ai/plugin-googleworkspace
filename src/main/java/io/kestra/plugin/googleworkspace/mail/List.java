@@ -79,12 +79,6 @@ public class List extends AbstractMail implements RunnableTask<List.Output> {
     @Builder.Default
     private Property<Boolean> includeSpamTrash = Property.ofValue(false);
 
-    @Schema(title = "The way you want to store the data", description = """
-            FETCH - outputs the messages as an output
-            FETCH_ONE - outputs the first message only as an output
-            STORE - stores all messages to a file
-            NONE - no output""")
-
     @Override
     public Output run(RunContext runContext) throws Exception {
         Gmail gmail = this.connection(runContext);
@@ -137,14 +131,8 @@ public class List extends AbstractMail implements RunnableTask<List.Output> {
     @Builder
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
-        @Schema(title = "List of messages (when fetchType is FETCH)")
+        @Schema(title = "List of messages")
         private java.util.List<io.kestra.plugin.googleworkspace.mail.models.Message> messages;
-
-        @Schema(title = "Single message (when fetchType is FETCH_ONE)")
-        private io.kestra.plugin.googleworkspace.mail.models.Message message;
-
-        @Schema(title = "URI of the stored messages file (when fetchType is STORE)")
-        private URI uri;
 
         @Schema(title = "Total estimated number of results")
         private Integer resultSizeEstimate;
